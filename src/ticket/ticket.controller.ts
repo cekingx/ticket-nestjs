@@ -8,18 +8,11 @@ export class TicketController {
 
   @Post('generate')
   async generateTicket(@Body() body: GenerateTicketDto, @Res() res) {
-    const code = '870c3738-8683-4ac2-b634-174925f9808f';
-    const orderId = '11104';
-    const { ticketType, orderedBy } = body;
-    const image = await this.ticketService.render(
-      code,
-      orderId,
-      ticketType,
-      orderedBy,
-    );
+    const ticket = await this.ticketService.createTicket(body);
+    const image = await this.ticketService.render(ticket);
     res.writeHead(200, {
       'Content-Type': 'image/png',
-      'X-filename': `ticket-${orderId}.png`,
+      'X-filename': `ticket-${ticket.id + 10000}.png`,
     });
     res.end(image, 'binary');
   }

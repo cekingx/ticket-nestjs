@@ -1,4 +1,4 @@
 export class GenerateTicketDto {
   ticketType: string;
-  orderedBy: string;
+  orderBy: string;
 }

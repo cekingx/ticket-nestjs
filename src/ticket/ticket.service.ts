@@ -1,20 +1,39 @@
 import { Injectable } from '@nestjs/common';
 import { toDataURL } from 'qrcode';
+import { GenerateTicketDto } from './dto/generate-ticket.dto';
+import { Ticket } from './ticket.entity';
+import { v4 as uuidv4 } from 'uuid';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const nodeHtmlToImage = require('node-html-to-image');
 
 @Injectable()
 export class TicketService {
-  async render(
-    code: string,
-    orderId: string,
-    ticketType: string,
-    orderedBy: string,
-  ) {
+  constructor(
+    @InjectRepository(Ticket)
+    private ticketRepository: Repository<Ticket>,
+  ) {}
+
+  async createTicket(generateTicketDto: GenerateTicketDto): Promise<Ticket> {
+    const ticket = new Ticket();
+    ticket.orderBy = generateTicketDto.orderBy;
+    ticket.ticketType = generateTicketDto.ticketType;
+    ticket.uniqueId = uuidv4();
+    return this.ticketRepository.save(ticket);
+  }
+
+  async gate(id: number) {
+    const numberOfGate = 2;
+    if (id % numberOfGate == 0) return numberOfGate;
+    return id % numberOfGate;
+  }
+
+  async render(ticket: Ticket) {
     const result = await toDataURL(
       JSON.stringify({
-        code,
-        orderId,
+        code: ticket.uniqueId,
+        orderId: ticket.id + 10000,
       }),
     );
     return nodeHtmlToImage({
@@ -190,6 +209,10 @@ export class TicketService {
                       <span class="ticket--info--title">Order info</span>
                       <span  class="ticket--info--content">Ordered By {{orderedBy}}</span>
                     </div>
+                    <div class="ticket--center--col">
+                      <span class="ticket--info--title">Gate</span>
+                      <span  class="ticket--info--content">{{gate}}</span>
+                    </div>
                   </div>
                 </div>
                 <div class="ticket--end">
@@ -201,9 +224,10 @@ export class TicketService {
           </html>`,
       content: {
         imageSource: result,
-        orderId,
-        ticketType,
-        orderedBy,
+        orderId: ticket.id + 10000,
+        ticketType: ticket.ticketType,
+        orderedBy: ticket.orderBy,
+        gate: await this.gate(ticket.id),
       },
     });
   }
